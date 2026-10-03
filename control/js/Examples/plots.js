@@ -13,7 +13,7 @@ console.log('PM', b.margins.phaseMargin, 'wgc', b.margins.gainCrossover);
 const w0=b.w[0]; ok('bode phase at w0', near(b.phase[0], -90-Math.atan(w0)*180/Math.PI-Math.atan(w0/2)*180/Math.PI, 1e-6), b.phase[0]);
 
 // root locus
-const rl = c.rootLocusPlot(L); ok('rl branches', rl.branches.length === 3, rl.asymptotes.centroid);
+const rloc = c.rootLocusPlot(L); ok('rloc branches', rl.branches.length === 3, rl.asymptotes.centroid);
 //
 const nyq = c.nyquistPlot(L); 
 //

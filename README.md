@@ -54,64 +54,27 @@ CaroLab is **not** a replacement for NumPy, SciPy, MATLAB, or OpenCV. It is a cu
 ## Repository layout
 
 ```
-carolab/
-├── README.md                            (this file)
-├── LICENSE                              (MIT)
+CaroLab/
+├── README.md
+├── LICENSE                 (MIT)
+├── package.json
 │
-├── caro.matrix-1.0.js                   (linear algebra)
-├── caro.linear-1.0.js                   (polynomials, fitting, PCA, Kalman)
-├── caro.statistics-1.0.js               (descriptive stats, time series)
-├── caro.dsp-1.0.js                      (1-D signal processing)
-├── caro.audio-1.0.js                    (multichannel audio)
-├── caro.dip-1.0.js                      (2-D image processing)
+├── linear/                 matrix, linear algebra, polynomials, fitting, PCA, Kalman
+├── statistics/             descriptive statistics, time series, forecasting
+├── dsp/                    1-D signal processing, filters, audio
+├── dip/                    2-D image processing
 │
-├── caro.compensator-1.0.js              (classical control)
-├── caro.manipulator-1.0.js              (robot arm kinematics, dynamics, control)
-├── caro.fuzzy-1.0.js                    (fuzzy inference + fuzzy PID)
-├── caro.fuzzyPID-1.0.js                 (three fuzzy-PID controllers)
-├── caro.anfis-1.0.js                    (adaptive neuro-fuzzy inference)
-├── caro.neuroFuzzyPID-1.0.js            (neuro-fuzzy gain-scheduled PID)
-├── caro.ga-1.0.js                       (real-coded genetic algorithm)
-├── caro.ml-1.0.js                       (unsupervised clustering)
+├── control/                transfer functions, state space, PID, compensators, fuzzy PID
+├── robotics/               manipulator kinematics, dynamics, force control, EnergyTank, FrictionRLS
 │
-├── EnergyTank.js                        (passivity helper for force control)
-├── FrictionRLS.js                       (recursive least-squares friction ID)
+├── optim/                  genetic algorithm, ANFIS, neuro-fuzzy PID
+├── ml/                     clustering and machine-learning utilities
 │
-├── docs/                                (per-library manuals, Markdown)
-│   ├── caro.manipulator-1.0_Dynamics.md
-│   ├── caro.manipulator-1.0_Kinematics.md
-│   ├── caro.manipulator-1.0_VelocityControl.md
-│   ├── caro.manipulator-1.0_ForceControl.md
-│   ├── caro.manipulator-1.0_PathTracking.md
-│   ├── caro.compensator-1.0_examples.md
-│   ├── caro.fuzzy-1.0_examples.md
-│   ├── caro.statistics-1.0_examples.md
-│   ├── caro.dsp-1.0_examples.md
-│   ├── caro.audio-1.0_examples.md
-│   ├── caro.dip-1.0_examples.md
-│   ├── caro.ml-1.0_examples.md
-│   └── ...
-│
-├── examples/                            (one folder per library)
-│   ├── dynamics/
-│   ├── kinematics/
-│   ├── velocity/
-│   ├── force/
-│   ├── path/
-│   ├── statistics/
-│   ├── dsp/
-│   ├── dip/
-│   ├── fuzzy/
-│   └── ...
-│
-└── apps/                                (standalone applications)
-    ├── hmi/                             (MySQL + serial + browser HMI)
-    │   ├── caro_hmi1.html
-    │   ├── getPV.php
-    │   ├── insertPV.js
-    │   └── rx.js
-    └── ...
+└── hmi/
+    └── hmi1/               browser HMI with serial receiver and MySQL
 ```
+
+Each folder holds single-file libraries (`caro.<name>-1.0.js`) that you can copy on their own.
 
 ---
 
@@ -164,6 +127,57 @@ carolab/
 | **`FrictionRLS.js`** | Recursive least-squares joint friction identification |
 ---
 
+## Installation
+
+[#installation](#installation)
+
+CaroLab has no installer. Each library is a single file: copy it, load it, use it.
+
+### Option 1: Copy the file (recommended)
+
+1. Download the library you need from this repository, for example `caro.matrix-1.0.js`.
+2. Put it next to your own script or HTML page.
+3. Load it.
+
+**Node.js**
+
+```js
+const Matrix = require('./caro.matrix-1.0.js');
+```
+
+**Browser**
+
+```html
+<script src="caro.matrix-1.0.js"></script>
+```
+
+Some libraries build on others (see the dependency graph under [Documentation](#documentation)). If a library needs another one, copy that file into the same folder as well.
+
+### Option 2: Clone the whole repository
+
+```
+git clone https://github.com/nimazamiri/CaroLab.git
+```
+
+Then copy the files you need into your project, or point your `require` paths at the cloned folders.
+
+### Option 3: npm (optional)
+
+```
+npm install @nimazamiri/carolab
+```
+
+```js
+const Matrix = require('@nimazamiri/carolab/linear/caro.matrix-1.0.js');
+```
+
+npm is only a convenience. The libraries work the same either way.
+
+### Requirements
+
+- **Node.js 14 or newer**, or any modern browser.
+- No other packages. Only the HMI application needs `serialport` and `mysql2`.
+
 ## Quick start
 
 ### Browser (no install)
@@ -175,17 +189,13 @@ carolab/
   <meta charset="utf-8">
 </head>
 <body>
-  <canvas id="c" width="600" height="200"></canvas>
-
-  <script src="caro.dsp-1.0.js"></script>
-  <script src="caro.plot.js"></script>
+  <script src="./caro.compensator-1.0.js"></script>
   <script>
-    // Generate a 440 Hz sine at 8 kHz
-    const s = Signal.sineWave(440, 0, 8000, 1024, 1.0);
-    console.log(s.info());
-
-    // Plot the first 200 samples
-    plot(s.toArray().slice(0, 200), document.getElementById('c'));
+    const c = new Compensator();
+	const G = c.tf([1], [1, 3, 2]);
+	console.log(String(G));
+	let st = c.step(G); ok('step final ~0.5', near(st.y[st.y.length - 1], 0.5, 1e-2), st.y[st.y.length-1]);
+	let im = c.impulse(G); ok('impulse peak', near(Math.max(...im.y), 0.25, 1e-2), Math.max(...im.y));
   </script>
 </body>
 </html>

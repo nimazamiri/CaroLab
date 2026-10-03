@@ -1,0 +1,53 @@
+{
+  "name": "@nimazamiri/carolab",
+  "version": "1.0.0",
+  "description": "A JavaScript toolkit for robotics, control systems, and applied mathematics. Single-file, zero-dependency libraries for browser and Node.js.",
+  "keywords": [
+    "robotics",
+    "control-systems",
+    "pid",
+    "fuzzy-logic",
+    "anfis",
+    "genetic-algorithm",
+    "kinematics",
+    "manipulator",
+    "signal-processing",
+    "dsp",
+    "image-processing",
+    "linear-algebra",
+    "statistics",
+    "kalman-filter",
+    "zero-dependency"
+  ],
+  "homepage": "https://github.com/nimazamiri/CaroLab#readme",
+  "bugs": {
+    "url": "https://github.com/nimazamiri/CaroLab/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nimazamiri/CaroLab.git"
+  },
+  "license": "MIT",
+  "author": "Nima Zamiri (https://github.com/nimazamiri)",
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "control/",
+    "dip/",
+    "dsp/",
+    "linear/",
+    "ml/",
+    "optim/",
+    "robotics/",
+    "statistics/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "echo \"No automated tests yet\" && exit 0"
+  }
+}

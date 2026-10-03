@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Dial Gauge · Min · Max · Value · Label</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .gauge-container {
+            background: white;
+            border-radius: 1rem;
+            padding: 0.2rem .2rem .2rem .2rem;
+            box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .gauge-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 0.05rem;
+            letter-spacing: 0.5px;
+        }
+        svg {
+            display: block;
+            width: 200px;
+            height: 200px;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.05));
+        }
+        .controls {
+            display: flex;
+            gap: 0.1rem;
+            margin-top: 0.0rem;
+			margin-bottom: 0.2rem;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .control-item label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        .control-item input {
+            width: 90px;
+            padding: 0.5rem;
+            border: 1px solid #d0d7de;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            text-align: center;
+            font-weight: 500;
+            outline: none;
+            transition: 0.15s;
+        }
+        .control-item input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        .label-display {
+            font-size: 0.9rem;
+            background: #ecf0f1;
+            padding: 0.3rem 1rem;
+            border-radius: 30px;
+            color: #2c3e50;
+            font-weight: 500;
+            margin-top: 0.25rem;
+        }
+        button {
+            background: #3498db;
+            border: none;
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.25);
+            letter-spacing: 0.3px;
+            margin-top: 0.25rem;
+        }
+        button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 7px 10px rgba(52, 152, 219, 0.3);
+        }
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+
+<table style="width:100%;border-collapse:collapse;">
+	
+	<tbody>
+		<tr>
+			<td style="padding:10px;border-bottom:1px solid #f4f4f5; width:25%">
+			
+				<div class="gauge-container">
+	
+					<div id="gaugeMount1"></div>
+					<!-- interactive controls (to test dynamic updates) -->
+					<div class="controls">
+						<label id="label1">TAG 1</label>
+						<label id="label1_value" style="margin-left:10px; font-weight: bold">45</label>
+					</div>
+					
+				</div>
+
+			</td>
+			<td style="padding:10px;border-bottom:1px solid #f4f4f5; width:25%">
+			
+				
+				<div class="gauge-container">
+	
+					<div id="gaugeMount2"></div>
+					<!-- interactive controls (to test dynamic updates) -->
+					<div class="controls">
+						<label id="label2">TAG 2</label>
+						<label id="label2_value" style="margin-left:10px; font-weight: bold">65</label>
+					</div>
+					
+				</div>
+			
+			
+			
+			</td>
+			<td> </td>
+		</tr>
+		<tr>
+			<td style="padding:10px;border-bottom:1px solid #f4f4f5;">
+			
+				<div class="gauge-container">
+	
+					<div id="gaugeMount3"></div>
+					<!-- interactive controls (to test dynamic updates) -->
+					<div class="controls">
+						<label id="label3">TAG 3</label>
+						<label id="label3_value" style="margin-left:10px; font-weight: bold">25</label>
+					</div>
+					
+				</div>
+
+			</td>
+			<td style="padding:10px;border-bottom:1px solid #f4f4f5;">
+			
+				
+				<div class="gauge-container">
+	
+					<div id="gaugeMount4"></div>
+					<!-- interactive controls (to test dynamic updates) -->
+					<div class="controls">
+						<label id="label4">TAG 4</label>
+						<label id="label4_value" style="margin-left:10px; font-weight: bold">85</label>
+					</div>
+					
+				</div>
+			
+			
+			
+			</td>
+			<td> </td>
+		</tr>
+	</tbody>
+</table>
+
+<script>
+    (function() {
+        // ----------------------------------------------
+        // DialGauge class – creates SVG dial gauge with
+        // min, max, value, and label properties.
+        // ----------------------------------------------
+        class DialGauge {
+            /**
+             * @param {HTMLElement|string} container - DOM element or selector
+             * @param {Object} options - configuration
+             * @param {number} options.min - minimum value (default 0)
+             * @param {number} options.max - maximum value (default 100)
+             * @param {number} options.value - current value (default 0)
+             * @param {string} options.label - label text (default '')
+             */
+            constructor(container, options = {}) {
+                // Resolve container
+                if (typeof container === 'string') {
+                    this.container = document.querySelector(container);
+                } else {
+                    this.container = container;
+                }
+                if (!this.container) {
+                    throw new Error('DialGauge: container not found');
+                }
+
+                // Defaults
+                const defaults = {
+                    min: 0,
+                    max: 100,
+                    value: 0,
+                    label: '',
+                };
+
+                // Merge options with defaults
+                this.settings = { ...defaults, ...options };
+
+                // Validate min/max
+                if (this.settings.min >= this.settings.max) {
+                    console.warn('DialGauge: min >= max — adjusting max to min+1');
+                    this.settings.max = this.settings.min + 1;
+                }
+
+                // Clamp initial value
+                this._clampValue();
+
+                // Dimensions (SVG viewBox)
+                this.width = 300;
+                this.height = 300;
+                this.cx = 150;
+                this.cy = 150;
+                this.radius = 110;          // outer radius of gauge face
+                this.tickRadius = 92;       // where numbers/ticks are drawn
+
+                // Angle range (degrees, 0° = 3 o'clock, clockwise)
+                // We use a standard 270° gauge: from -135° (bottom-left) to +135° (bottom-right)
+                // That is: startAngle = -135, endAngle = 135 (total sweep 270°)
+                this.startAngle = -135;
+                this.endAngle = 135;
+                this.sweepAngle = this.endAngle - this.startAngle; // 270°
+
+                // Create SVG element
+                this.svg = this._createSVG();
+                this.container.innerHTML = ''; // clear
+                this.container.appendChild(this.svg);
+
+                // Render everything
+                this.render();
+            }
+
+            // ----- private helpers -----
+
+            /**
+             * Clamp value between min and max
+             */
+            _clampValue() {
+                const { min, max, value } = this.settings;
+                let v = Number(value);
+                if (isNaN(v)) v = min;
+                this.settings.value = Math.min(max, Math.max(min, v));
+            }
+
+            /**
+             * Map a value from [min, max] to an angle (degrees) in the gauge range
+             */
+            _valueToAngle(value) {
+                const { min, max } = this.settings;
+                const clamped = Math.min(max, Math.max(min, value));
+                const ratio = (clamped - min) / (max - min);
+                return this.startAngle + ratio * this.sweepAngle;
+            }
+
+            /**
+             * Convert polar coordinates to cartesian
+             */
+            _polarToCartesian(cx, cy, radius, angleDeg) {
+                const rad = (angleDeg - 90) * Math.PI / 180.0; // adjust: 0° = top? We want standard math, but gauge often 0°=right.
+                // For gauge: angle 0° = 3 o'clock, so we use angle directly.
+                // Let's use: x = cx + r * cos(angleRad), y = cy + r * sin(angleRad), where 0° = right.
+                const angleRad = angleDeg * Math.PI / 180.0;
+                return {
+                    x: cx + radius * Math.cos(angleRad),
+                    y: cy + radius * Math.sin(angleRad),
+                };
+            }
+
+            /**
+             * Generate arc path between two angles (degrees)
+             */
+            _arcPath(cx, cy, radius, startAngle, endAngle) {
+                const startRad = startAngle * Math.PI / 180.0;
+                const endRad = endAngle * Math.PI / 180.0;
+                const start = {
+                    x: cx + radius * Math.cos(startRad),
+                    y: cy + radius * Math.sin(startRad),
+                };
+                const end = {
+                    x: cx + radius * Math.cos(endRad),
+                    y: cy + radius * Math.sin(endRad),
+                };
+                const largeArc = (endAngle - startAngle) > 180 ? 1 : 0;
+                // sweep-flag: 1 means clockwise, 0 counterclockwise.
+                // In SVG, y is down, so we need to use sweep=1 for clockwise visual.
+                // But because our angles increase clockwise (0°=right, 90°=down), sweep=1 works.
+                return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+            }
+
+            // ----- create base SVG structure -----
+            _createSVG() {
+                const ns = 'http://www.w3.org/2000/svg';
+                const svg = document.createElementNS(ns, 'svg');
+                svg.setAttribute('viewBox', `0 0 ${this.width} ${this.height}`);
+                svg.setAttribute('width', '100%');
+                svg.setAttribute('height', '100%');
+                svg.style.display = 'block';
+                return svg;
+            }
+
+            // ----- main render method (re-draws gauge) -----
+            render() {
+                // Clear SVG
+                while (this.svg.firstChild) {
+                    this.svg.removeChild(this.svg.firstChild);
+                }
+
+                const ns = 'http://www.w3.org/2000/svg';
+                const { min, max, value, label } = this.settings;
+
+                // ---- 1. background circle / face ----
+                const face = document.createElementNS(ns, 'circle');
+                face.setAttribute('cx', this.cx);
+                face.setAttribute('cy', this.cy);
+                face.setAttribute('r', this.radius + 8);
+                face.setAttribute('fill', '#ffffff');
+                face.setAttribute('stroke', '#e0e6ed');
+                face.setAttribute('stroke-width', '2');
+                this.svg.appendChild(face);
+
+                // inner subtle circle
+                const innerCircle = document.createElementNS(ns, 'circle');
+                innerCircle.setAttribute('cx', this.cx);
+                innerCircle.setAttribute('cy', this.cy);
+                innerCircle.setAttribute('r', this.radius - 12);
+                innerCircle.setAttribute('fill', '#fafbfc');
+                innerCircle.setAttribute('stroke', '#d0d7de');
+                innerCircle.setAttribute('stroke-width', '0.8');
+                this.svg.appendChild(innerCircle);
+
+                // ---- 2. colored arc (value track) ----
+                const trackArc = document.createElementNS(ns, 'path');
+                trackArc.setAttribute('d', this._arcPath(this.cx, this.cy, this.radius - 6, this.startAngle, this.endAngle));
+                trackArc.setAttribute('fill', 'none');
+                trackArc.setAttribute('stroke', '#e9edf2');
+                trackArc.setAttribute('stroke-width', '12');
+                trackArc.setAttribute('stroke-linecap', 'round');
+                this.svg.appendChild(trackArc);
+
+                // progress arc (value)
+                const valueAngle = this._valueToAngle(value);
+                // Only draw if value > min (avoid zero-length arc)
+                if (value > min) {
+                    const progressArc = document.createElementNS(ns, 'path');
+                    const progressPath = this._arcPath(this.cx, this.cy, this.radius - 6, this.startAngle, valueAngle);
+                    progressArc.setAttribute('d', progressPath);
+                    progressArc.setAttribute('fill', 'none');
+                    progressArc.setAttribute('stroke', '#2c7be5');
+                    progressArc.setAttribute('stroke-width', '12');
+                    progressArc.setAttribute('stroke-linecap', 'round');
+                    this.svg.appendChild(progressArc);
+                }
+
+                // ---- 3. tick marks and numeric labels ----
+                const tickCount = 11; // 10 intervals -> 11 ticks (including min & max)
+                const tickLength = 10;
+                const labelOffset = 22; // distance from tick outer end to text
+
+                for (let i = 0; i < tickCount; i++) {
+                    const ratio = i / (tickCount - 1);
+                    const tickValue = min + ratio * (max - min);
+                    const angle = this.startAngle + ratio * this.sweepAngle;
+
+                    // outer & inner points for tick line
+                    const outerR = this.radius - 2;
+                    const innerR = this.radius - 2 - tickLength;
+                    const outerPoint = this._polarToCartesian(this.cx, this.cy, outerR, angle);
+                    const innerPoint = this._polarToCartesian(this.cx, this.cy, innerR, angle);
+
+                    const tickLine = document.createElementNS(ns, 'line');
+                    tickLine.setAttribute('x1', innerPoint.x);
+                    tickLine.setAttribute('y1', innerPoint.y);
+                    tickLine.setAttribute('x2', outerPoint.x);
+                    tickLine.setAttribute('y2', outerPoint.y);
+                    tickLine.setAttribute('stroke', '#94a3b8');
+                    tickLine.setAttribute('stroke-width', i === 0 || i === tickCount - 1 ? 2.5 : 1.5);
+                    tickLine.setAttribute('stroke-linecap', 'round');
+                    this.svg.appendChild(tickLine);
+
+                    // numeric label (only if we want, but we show all for clarity)
+                    const labelR = this.radius - 2 - tickLength - labelOffset;
+                    const labelPos = this._polarToCartesian(this.cx, this.cy, labelR, angle);
+
+                    const text = document.createElementNS(ns, 'text');
+                    text.setAttribute('x', labelPos.x);
+                    text.setAttribute('y', labelPos.y);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'middle');
+                    text.setAttribute('font-size', '12');
+                    text.setAttribute('font-weight', '500');
+                    text.setAttribute('fill', '#4b5b6b');
+                    text.setAttribute('font-family', 'Segoe UI, Roboto, sans-serif');
+                    // Round numbers to avoid long decimals
+                    const rounded = Math.round(tickValue * 10) / 10;
+                    text.textContent = rounded;
+                    this.svg.appendChild(text);
+                }
+
+                // ---- 4. needle ----
+                const needleAngle = this._valueToAngle(value);
+                const needleLength = this.radius - 18;
+                const needleTip = this._polarToCartesian(this.cx, this.cy, needleLength, needleAngle);
+                const needleBaseLeft = this._polarToCartesian(this.cx, this.cy, 12, needleAngle + 90);
+                const needleBaseRight = this._polarToCartesian(this.cx, this.cy, 12, needleAngle - 90);
+
+                // needle as polygon (triangle / kite)
+                const needle = document.createElementNS(ns, 'polygon');
+                needle.setAttribute('points', `
+                    ${needleTip.x},${needleTip.y}
+                    ${needleBaseLeft.x},${needleBaseLeft.y}
+                    ${needleBaseRight.x},${needleBaseRight.y}
+                `);
+                needle.setAttribute('fill', '#1e293b');
+                needle.setAttribute('stroke', '#0f172a');
+                needle.setAttribute('stroke-width', '1');
+                needle.setAttribute('stroke-linejoin', 'round');
+                this.svg.appendChild(needle);
+
+                // needle center cap
+                const cap = document.createElementNS(ns, 'circle');
+                cap.setAttribute('cx', this.cx);
+                cap.setAttribute('cy', this.cy);
+                cap.setAttribute('r', '12');
+                cap.setAttribute('fill', '#1e293b');
+                cap.setAttribute('stroke', '#ffffff');
+                cap.setAttribute('stroke-width', '2');
+                this.svg.appendChild(cap);
+
+                const capInner = document.createElementNS(ns, 'circle');
+                capInner.setAttribute('cx', this.cx);
+                capInner.setAttribute('cy', this.cy);
+                capInner.setAttribute('r', '5');
+                capInner.setAttribute('fill', '#ffffff');
+                capInner.setAttribute('stroke', '#1e293b');
+                capInner.setAttribute('stroke-width', '1.5');
+                this.svg.appendChild(capInner);
+
+                // ---- 5. value text (large, center bottom) ----
+                const valueText = document.createElementNS(ns, 'text');
+                valueText.setAttribute('x', this.cx);
+                valueText.setAttribute('y', this.cy + 52);
+                valueText.setAttribute('text-anchor', 'middle');
+                valueText.setAttribute('font-size', '28');
+                valueText.setAttribute('font-weight', '700');
+                valueText.setAttribute('fill', '#0f172a');
+                valueText.setAttribute('font-family', 'Segoe UI, Roboto, sans-serif');
+                valueText.textContent = Math.round(value * 10) / 10;
+                this.svg.appendChild(valueText);
+
+                // ---- 6. label text (below value) ----
+                const labelText = document.createElementNS(ns, 'text');
+                labelText.setAttribute('x', this.cx);
+                labelText.setAttribute('y', this.cy + 85);
+                labelText.setAttribute('text-anchor', 'middle');
+                labelText.setAttribute('font-size', '14');
+                labelText.setAttribute('font-weight', '500');
+                labelText.setAttribute('fill', '#5e6f8d');
+                labelText.setAttribute('font-family', 'Segoe UI, Roboto, sans-serif');
+                labelText.setAttribute('letter-spacing', '0.5');
+                labelText.textContent = label || '—';
+                this.svg.appendChild(labelText);
+
+                // Also show min & max at edges? Already have tick numbers, but we can put small min/max markers
+                // It's fine.
+            }
+
+            // ----- public API to update properties dynamically -----
+            update({ min, max, value, label } = {}) {
+                // Update settings if provided
+                if (min !== undefined) this.settings.min = Number(min);
+                if (max !== undefined) this.settings.max = Number(max);
+                // Ensure min < max
+                if (this.settings.min >= this.settings.max) {
+                    this.settings.max = this.settings.min + 1;
+                }
+                if (value !== undefined) this.settings.value = Number(value);
+                if (label !== undefined) this.settings.label = String(label);
+
+                // Clamp value after min/max change
+                this._clampValue();
+
+                // Re-render
+                this.render();
+            }
+
+            // Get current settings (read-only copy)
+            getSettings() {
+                return { ...this.settings };
+            }
+        }
+
+        // ----------------------------------------------
+        // Instantiate one gauge per tag (tagID 1..4)
+        // ----------------------------------------------
+        const mount1 = document.getElementById('gaugeMount1');
+        const gauge1 = new DialGauge(mount1, { min: 0, max: 100, value: 45, label: '.' });
+
+        const mount2 = document.getElementById('gaugeMount2');
+        const gauge2 = new DialGauge(mount2, { min: 0, max: 100, value: 65, label: '.' });
+
+        const mount3 = document.getElementById('gaugeMount3');
+        const gauge3 = new DialGauge(mount3, { min: 0, max: 100, value: 25, label: '.' });
+
+        const mount4 = document.getElementById('gaugeMount4');
+        const gauge4 = new DialGauge(mount4, { min: 0, max: 100, value: 85, label: '.' });
+
+        // Lookup tables: tagID -> gauge instance / value label element
+        const gaugesByTag = { 1: gauge1, 2: gauge2, 3: gauge3, 4: gauge4 };
+        const valueLabelsByTag = {
+            1: document.getElementById('label1_value'),
+            2: document.getElementById('label2_value'),
+            3: document.getElementById('label3_value'),
+            4: document.getElementById('label4_value'),
+        };
+
+        // ----------------------------------------------
+        // Live updates: poll getPV.php, which reads the
+        // latest value per tag back out of MySQL
+        // (processvalues1). rx3.js only inserts; it does
+        // not push to the browser in this version.
+        // Response shape: {"1":{"pvValue":45,"pvTime":"..."}, "2":{...}, ...}
+        // ----------------------------------------------
+        const POLL_URL = 'getPV.php';
+        const POLL_INTERVAL_MS = 1000;
+
+        function applyTagUpdate(tagID, value) {
+            const gauge = gaugesByTag[tagID];
+            if (gauge) gauge.update({ value });
+            const lbl = valueLabelsByTag[tagID];
+            if (lbl) lbl.textContent = Math.round(value * 10) / 10;
+        }
+
+        async function pollOnce() {
+            try {
+                const res = await fetch(POLL_URL, { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                Object.keys(data).forEach((tagIDStr) => {
+                    const tagID = Number(tagIDStr);
+                    applyTagUpdate(tagID, data[tagIDStr].pvValue);
+                });
+            } catch (err) {
+                console.error('getPV.php poll failed:', err.message);
+            }
+        }
+
+        pollOnce();
+        setInterval(pollOnce, POLL_INTERVAL_MS);
+    })();
+</script>
+</body>
+</html>

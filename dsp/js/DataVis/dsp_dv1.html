@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signal Plot · JavaScript</title>
+    <!-- <script src="../plotly.min.js"></script> -->
+	<!-- Use 'https://' protocol if you don't use a local server -->
+    <script src="http://cdn.plot.ly/plotly-2.27.1.min.js"></script> 
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+        body {
+            background: #f5f7fb;
+            display: flex; justify-content: center; align-items: flex-start;
+            min-height: 100vh; margin: 0; padding: 20px;
+        }
+        .card {
+            background: white; border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            padding: 28px; max-width: 1100px; width: 100%;
+        }
+        h1 { font-weight: 500; font-size: 1.8rem; margin: 0 0 0.25rem 0; color: #1e2b3c; }
+        .subtitle {
+            display: flex; justify-content: space-between; align-items: center;
+            color: #4a5c6e; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px;
+        }
+        .tf-badge {
+            background: #eef2f8; padding: 8px 16px; border-radius: 40px;
+            font-family: 'JetBrains Mono','Fira Code',monospace;
+            font-size: 1rem; color: #1e3b5c; border: 1px solid #d0ddeb;
+        }
+        .plot { width: 100%; height: 550px; border-radius: 16px; background: #fff; }
+        .footer-note {
+            margin-top: 1.2rem; font-size: 0.85rem; color: #6a7c8e;
+            display: flex; justify-content: space-between; align-items: center;
+            border-top: 1px solid #e2e8f0; padding-top: 1rem;
+            flex-wrap: wrap; gap: 10px;
+        }
+        .code-note {
+            font-family: 'JetBrains Mono', monospace;
+            background: #f0f4fa; border-radius: 6px; padding: 4px 10px; font-size: 0.85rem;
+        }
+        .legend-note { display: flex; gap: 20px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .line { width: 22px; height: 3px; border-radius: 2px; }
+        .dot  { width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>🌱 Signal Plot</h1>
+    <div class="subtitle">
+        <span>440 Hz sine · 8 kHz · 1024 samples</span>
+        <span class="tf-badge" id="badge">---</span>
+    </div>
+    <div id="signalPlot" class="plot"></div>
+    <div class="footer-note">
+        <div class="legend-note">
+            <span class="legend-item"><span class="line" style="background:#9aa6b2;"></span> noisy</span>
+            <span class="legend-item"><span class="line" style="background:#1e6f9f;"></span> filtered</span>
+            <span class="legend-item"><span class="dot"  style="background:#d64545;"></span> peaks</span>
+        </div>
+        <span class="code-note" id="statNote">---</span>
+    </div>
+</div>
+
+<!-- Load your Signal class. It MUST define a global `Signal` (plain script, not a module),
+     or you must switch both this file and the next script to type="module" + import. -->
+<script src="../caro.dsp-1.0.js"></script>
+
+<script>
+    // --- Sanity check: is Signal loaded? ---
+    if (typeof Signal === 'undefined') {
+        console.error('Signal is not defined. Check that js/caro.dsp.js loaded and exposes Signal globally.');
+    }
+
+    // 1. Build the signals
+    const fs = 8000;
+    const s = Signal.sineWave(440, 0, fs, 1024, 1.0);
+
+    // 2. Info
+    const info = s.info();
+    console.log('info:', info);
+
+    // 3. Dominant frequency of the clean sine
+    console.log('dominant f:', s.dominantFrequency());
+
+    // 4. Add noise
+    const noise = Signal.of(...Array.from({ length: s.length }, () => (Math.random() - 0.5) * 0.2));
+    const noisy = s.add(noise);
+
+    // 5. Low-pass at 600 Hz
+    const clean = noisy.butterworth({ type: 'lowpass', cutoff: 600, order: 4 });
+
+    // 6. RMS before/after
+    console.log('rms noisy:', noisy.rms(), 'rms clean:', clean.rms());
+
+    // 7. Peaks
+    const peaks = clean.findPeaks({ smoothWindow: 7, minDistance: 0.0005 });
+    console.log('peaks:', peaks.length);
+    const fEst = Signal.frequencyFromPeaks(peaks);
+    console.log('estimated f:', fEst);
+
+    // --- Update the header badge / footer note ---
+    document.getElementById('badge').textContent = `fs = ${fs} Hz`;
+    document.getElementById('statNote').textContent =
+        `RMS: noisy ${noisy.rms().toFixed(3)} → filtered ${clean.rms().toFixed(3)} · f ≈ ${fEst.toFixed(1)} Hz`;
+
+    // --- Build traces ---
+    const t = s.timeAxis();          // x values: seconds
+
+    const traces = [
+        {
+            x: t,
+            y: noisy.toArray(),
+            type: 'scatter',
+            mode: 'lines',
+            name: 'noisy',
+            line: { color: '#9aa6b2', width: 1 },
+            hovertemplate: 't = %{x:.4f} s<br>y = %{y:.3f}<extra>noisy</extra>'
+        },
+        {
+            x: t,
+            y: clean.toArray(),
+            type: 'scatter',
+            mode: 'lines',
+            name: 'filtered',
+            line: { color: '#1e6f9f', width: 2 },
+            hovertemplate: 't = %{x:.4f} s<br>y = %{y:.3f}<extra>filtered</extra>'
+        },
+        {
+            x: peaks.map(p => p.index / fs),
+            y: peaks.map(p => p.value),
+            type: 'scatter',
+            mode: 'markers',
+            name: 'peaks',
+            marker: { color: '#d64545', size: 7 },
+            hovertemplate: 't = %{x:.4f} s<br>y = %{y:.3f}<extra>peak</extra>'
+        }
+    ];
+
+    // --- Layout ---
+    const layout = {
+        title: {
+            text: 'Signal · time domain',
+            font: { size: 18, color: '#1e2b3c' }
+        },
+        xaxis: {
+            title: 'Time (s)',
+            gridcolor: '#e9eef3',
+            zeroline: false,
+            titlefont: { size: 14 },
+            tickfont:  { size: 12 }
+        },
+        yaxis: {
+            title: 'Amplitude',
+            gridcolor: '#e9eef3',
+            zeroline: true,
+            zerolinecolor: '#888',
+            zerolinewidth: 2,
+            titlefont: { size: 14 },
+            tickfont:  { size: 12 }
+        },
+        margin: { l: 65, r: 25, t: 65, b: 55 },
+        plot_bgcolor: '#ffffff',
+        paper_bgcolor: '#ffffff',
+        hovermode: 'x unified',
+        legend: {
+            x: 0.02, y: 0.98,
+            bgcolor: 'rgba(255,255,255,0.85)',
+            bordercolor: '#ddd', borderwidth: 1
+        },
+        height: 550,
+        autosize: true
+    };
+
+    Plotly.newPlot('signalPlot', traces, layout, { responsive: true, displayModeBar: false });
+</script>
+</body>
+</html>

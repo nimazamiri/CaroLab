@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>CaroLab DIP · Image Processing Studio</title>
+
+<!-- Plotly is not needed for DIP, but included in case you want to extend -->
+<!-- Use 'https://' protocol if you don't use a local server -->
+<script src="http://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+<!-- CaroLab DIP library (external) -->
+<script src="../caro.dip-1.0.js"></script>
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+    background: #0f1620;
+    color: #dbe4ef;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---------- Menu bar ---------- */
+  .menubar {
+    display: flex;
+    align-items: center;
+    background: #1a2432;
+    border-bottom: 1px solid #2a3a4f;
+    padding: 0 8px;
+    height: 40px;
+    user-select: none;
+    position: relative;
+    z-index: 100;
+  }
+  .menubar .brand {
+    font-weight: 600;
+    color: #7dd3fc;
+    padding: 0 14px 0 6px;
+    letter-spacing: 0.4px;
+    font-size: 0.95rem;
+  }
+  .menu {
+    position: relative;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    border-radius: 6px;
+    transition: 0.15s;
+  }
+  .menu:hover { background: #263349; color: #fff; }
+  .menu.open { background: #2d3f5c; color: #fff; }
+  .dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 240px;
+    background: #1e2a3a;
+    border: 1px solid #2f4159;
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+    padding: 6px 0;
+    margin-top: 4px;
+  }
+  .menu.open .dropdown { display: block; }
+  .dropdown .item {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #d7e1ee;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .dropdown .item:hover { background: #2c3d55; color: #fff; }
+  .dropdown .item .hint { color: #6b829e; font-size: 0.75rem; }
+  .dropdown .sep {
+    height: 1px;
+    background: #2f4159;
+    margin: 5px 8px;
+  }
+  .dropdown .disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #141d29;
+    border-bottom: 1px solid #233247;
+    font-size: 0.82rem;
+    flex-wrap: wrap;
+  }
+  .toolbar label { color: #93a8c2; }
+  .toolbar input[type="number"] {
+    width: 62px;
+    background: #0f1722;
+    border: 1px solid #2d4056;
+    color: #e2e8f0;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+  .toolbar .divider {
+    width: 1px; height: 20px; background: #2d4056; margin: 0 6px;
+  }
+  .btn {
+    background: #2b6cb0;
+    border: none;
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: 0.15s;
+  }
+  .btn:hover { background: #3b82f6; }
+  .btn.ghost { background: #2a3a4f; }
+  .btn.ghost:hover { background: #3b4f6b; }
+
+  /* ---------- Main area ---------- */
+  .main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-right: 1px solid #233247;
+  }
+  .panel:last-child { border-right: none; }
+  .panel-header {
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #7c93ae;
+    background: #121b26;
+    border-bottom: 1px solid #1f2c3d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-header .meta { color: #4f6a88; text-transform: none; letter-spacing: 0; }
+  .canvas-wrap {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0b1119;
+    padding: 20px;
+  }
+  canvas {
+    image-rendering: pixelated;
+    background:
+      repeating-conic-gradient(#1a2331 0% 25%, #141b26 0% 50%) 50% / 16px 16px;
+    box-shadow: 0 0 0 1px #2b3d55, 0 8px 24px rgba(0,0,0,0.5);
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  /* ---------- Status bar ---------- */
+  .statusbar {
+    height: 26px;
+    background: #121b26;
+    border-top: 1px solid #233247;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 0.75rem;
+    color: #8ba3be;
+    gap: 20px;
+  }
+  .statusbar .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e; margin-right: 6px; display: inline-block;
+  }
+  .statusbar .dot.busy { background: #f59e0b; }
+  .statusbar .dot.err { background: #ef4444; }
+
+  /* ---------- Modal (for Hough results) ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 999;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: #1b2635;
+    border: 1px solid #2f4159;
+    border-radius: 10px;
+    width: min(820px, 92vw);
+    max-height: 84vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .modal-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #2a3a4f;
+    font-weight: 600;
+    color: #7dd3fc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header .close {
+    cursor: pointer; color: #7c93ae; font-size: 1.2rem; line-height: 1;
+  }
+  .modal-header .close:hover { color: #fff; }
+  .modal-body {
+    padding: 14px 18px;
+    overflow: auto;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.78rem;
+    color: #c8d6e5;
+    white-space: pre;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= MENU BAR ================= -->
+<div class="menubar">
+  <div class="brand">🖼️ CaroLab DIP</div>
+
+  <!-- File -->
+  <div class="menu" data-menu="file">
+    File
+    <div class="dropdown">
+      <div class="item" data-cmd="load-sample">Load Sample Image <span class="hint">gradient + squares</span></div>
+      <div class="item" data-cmd="load-url">Load from URL…</div>
+      <div class="item" data-cmd="load-file">Load from File…</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="save-png">Save Result as PNG</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="reset">Reset to Original</div>
+    </div>
+  </div>
+
+  <!-- Point Ops -->
+  <div class="menu" data-menu="point">
+    Point
+    <div class="dropdown">
+      <div class="item" data-cmd="invert">Invert</div>
+      <div class="item" data-cmd="rgb2gray">RGB → Grayscale</div>
+      <div class="item" data-cmd="rgb2bw">RGB → Black &amp; White</div>
+      <div class="item" data-cmd="gray2bw">Gray → Black &amp; White</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="brightness">Brightness +30</div>
+      <div class="item" data-cmd="adjustIntensity">Adjust Intensity +30</div>
+      <div class="item" data-cmd="adjustContrast">Contrast ×1.4</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="histEqualization">Histogram Equalization <span class="hint">on gray</span></div>
+    </div>
+  </div>
+
+  <!-- Geometry -->
+  <div class="menu" data-menu="geo">
+    Geometry
+    <div class="dropdown">
+      <div class="item" data-cmd="rotate90">Rotate 90°</div>
+      <div class="item" data-cmd="rotate180">Rotate 180°</div>
+      <div class="item" data-cmd="rotate270">Rotate 270°</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="flipH">Flip Horizontal</div>
+      <div class="item" data-cmd="flipV">Flip Vertical</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="resize">Resize ×2</div>
+      <div class="item" data-cmd="crop">Crop (25%)</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="menu" data-menu="filters">
+    Filters
+    <div class="dropdown">
+      <div class="item" data-cmd="convolve-sharpen">Sharpen (3×3)</div>
+      <div class="item" data-cmd="convolve-blur">Box Blur (3×3)</div>
+      <div class="item" data-cmd="convolve-emboss">Emboss (3×3)</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="edgeSobel">Sobel Edges</div>
+      <div class="item" data-cmd="edgeCanny">Canny Edges</div>
+    </div>
+  </div>
+
+  <!-- Morphology -->
+  <div class="menu" data-menu="morph">
+    Morphology
+    <div class="dropdown">
+      <div class="item" data-cmd="dilate">Dilate (grayscale 3×3)</div>
+      <div class="item" data-cmd="erode">Erode (grayscale 3×3)</div>
+      <div class="item" data-cmd="open">Open</div>
+      <div class="item" data-cmd="close">Close</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="dilateMask">Dilate Mask (3×3)</div>
+      <div class="item" data-cmd="erodeMask">Erode Mask (3×3)</div>
+      <div class="item" data-cmd="morphOpen">Morph Open (mask)</div>
+      <div class="item" data-cmd="morphClose">Morph Close (mask)</div>
+    </div>
+  </div>
+
+  <!-- Color -->
+  <div class="menu" data-menu="color">
+    Color
+    <div class="dropdown">
+      <div class="item" data-cmd="rgb2hsv">RGB → HSV</div>
+      <div class="item" data-cmd="colorReduction">K‑Means Reduction (6 colors)</div>
+      <div class="sep"></div>
+      <div class="item" data-cmd="filter-red">Filter: Red</div>
+      <div class="item" data-cmd="filter-orange">Filter: Orange</div>
+      <div class="item" data-cmd="filter-yellow">Filter: Yellow</div>
+      <div class="item" data-cmd="filter-green">Filter: Green</div>
+      <div class="item" data-cmd="filter-cyan">Filter: Cyan</div>
+      <div class="item" data-cmd="filter-blue">Filter: Blue</div>
+      <div class="item" data-cmd="filter-purple">Filter: Purple</div>
+    </div>
+  </div>
+
+  <!-- Analysis -->
+  <div class="menu" data-menu="analysis">
+    Analysis
+    <div class="dropdown">
+      <div class="item" data-cmd="houghLines">Hough Lines <span class="hint">modal</span></div>
+      <div class="item" data-cmd="houghCircles">Hough Circles <span class="hint">modal</span></div>
+      <div class="item" data-cmd="findContours">Find Contours <span class="hint">draw overlay</span></div>
+    </div>
+  </div>
+
+  <!-- View -->
+  <div class="menu" data-menu="view">
+    View
+    <div class="dropdown">
+      <div class="item" data-cmd="toggle-original">Toggle Original / Result</div>
+      <div class="item" data-cmd="fit">Fit to Window</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TOOLBAR ================= -->
+<div class="toolbar">
+  <label>Threshold</label>
+  <input type="number" id="thr" value="128" min="0" max="255" step="1" />
+
+  <label>Brightness</label>
+  <input type="number" id="brightness" value="30" min="-255" max="255" step="1" />
+
+  <label>Contrast</label>
+  <input type="number" id="contrast" value="1.4" min="0" max="4" step="0.1" />
+
+  <label>Canny Low</label>
+  <input type="number" id="cannyLow" value="50" min="0" max="255" step="1" />
+
+  <label>Canny High</label>
+  <input type="number" id="cannyHigh" value="100" min="0" max="255" step="1" />
+
+  <div class="divider"></div>
+
+  <button class="btn" id="btn-canny">Apply Canny</button>
+  <button class="btn ghost" id="btn-reset">Reset</button>
+</div>
+
+<!-- ================= MAIN ================= -->
+<div class="main">
+  <!-- Original panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>Original</span>
+      <span class="meta" id="meta-original">—</span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="canvas-original"></canvas>
+    </div>
+  </div>
+
+  <!-- Result panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span>Result</span>
+      <span class="meta" id="meta-result">—</span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="canvas-result"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STATUS BAR ================= -->
+<div class="statusbar">
+  <span><span class="dot" id="status-dot"></span><span id="status-text">Ready</span></span>
+  <span id="status-info"></span>
+</div>
+
+<!-- ================= MODAL (for Hough output) ================= -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="modal-title">Results</span>
+      <span class="close" id="modal-close">×</span>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ================= APP LOGIC ================= -->
+<script>
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------
+  //  State
+  // ------------------------------------------------------------------
+  let originalImage = null;   // Image (caro.dip) — pristine source
+  let currentImage  = null;   // Image — current working result
+  let showOriginal  = false;  // toggle flag
+
+  const canvasOriginal = document.getElementById("canvas-original");
+  const canvasResult   = document.getElementById("canvas-result");
+  const metaOriginal   = document.getElementById("meta-original");
+  const metaResult     = document.getElementById("meta-result");
+  const statusDot      = document.getElementById("status-dot");
+  const statusText     = document.getElementById("status-text");
+  const statusInfo     = document.getElementById("status-info");
+
+  // ------------------------------------------------------------------
+  //  Utilities
+  // ------------------------------------------------------------------
+  function setStatus(text, kind) {
+    statusText.textContent = text;
+    statusDot.className = "dot" + (kind ? " " + kind : "");
+  }
+
+  function setInfo(text) {
+    statusInfo.textContent = text;
+  }
+
+  function describe(img) {
+    return img ? `${img.width} × ${img.height}` : "—";
+  }
+
+  function drawToCanvas(img, canvas) {
+    if (!img) {
+      canvas.width = 1;
+      canvas.height = 1;
+      return;
+    }
+    img.draw(canvas);
+  }
+
+  function refresh() {
+    // Original panel
+    if (originalImage) {
+      drawToCanvas(originalImage, canvasOriginal);
+      metaOriginal.textContent = describe(originalImage);
+    } else {
+      canvasOriginal.width = 1;
+      canvasOriginal.height = 1;
+      metaOriginal.textContent = "—";
+    }
+
+    // Result panel — either current or original based on toggle
+    const shown = showOriginal ? originalImage : currentImage;
+    if (shown) {
+      drawToCanvas(shown, canvasResult);
+      metaResult.textContent = describe(shown);
+    } else {
+      canvasResult.width = 1;
+      canvasResult.height = 1;
+      metaResult.textContent = "—";
+    }
+
+    setInfo(shown ? `Active: ${describe(shown)} · ${shown.data.length} bytes` : "");
+  }
+
+  function apply(label, fn) {
+    if (!currentImage) { setStatus("No image loaded", "err"); return; }
+    try {
+      setStatus("Processing: " + label, "busy");
+      // Let the browser paint the busy state before heavy work
+      setTimeout(() => {
+        try {
+          const out = fn(currentImage);
+          currentImage = out;
+          refresh();
+          setStatus("Done: " + label);
+        } catch (err) {
+          console.error(err);
+          setStatus("Error: " + err.message, "err");
+        }
+      }, 10);
+    } catch (err) {
+      console.error(err);
+      setStatus("Error: " + err.message, "err");
+    }
+  }
+
+  // ------------------------------------------------------------------
+  //  Synthetic sample image (matches dip_examples.js makeTestImage)
+  // ------------------------------------------------------------------
+  function makeTestImage(width, height) {
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        data[i]     = Math.round((x / width) * 255);
+        data[i + 1] = Math.round((y / height) * 255);
+        data[i + 2] = 128;
+        data[i + 3] = 255;
+        if (x < width / 4 && y < height / 4) {
+          data[i] = data[i + 1] = data[i + 2] = 255;
+        }
+        if (x > (3 * width) / 4 && y > (3 * height) / 4) {
+          data[i] = data[i + 1] = data[i + 2] = 0;
+        }
+      }
+    }
+    return new Image({ data, width, height });
+  }
+
+  // ------------------------------------------------------------------
+  //  Loaders
+  // ------------------------------------------------------------------
+  function loadSample() {
+    originalImage = makeTestImage(256, 256);
+    currentImage  = originalImage.clone();
+    showOriginal  = false;
+    refresh();
+    setStatus("Loaded sample image");
+  }
+
+  function loadFromURL() {
+    const url = prompt("Enter image URL (must allow CORS):");
+    if (!url) return;
+    setStatus("Loading from URL…", "busy");
+    Image.fromURL(url)
+      .then(img => {
+        originalImage = img;
+        currentImage = img.clone();
+        showOriginal = false;
+        refresh();
+        setStatus("Loaded: " + url);
+      })
+      .catch(err => {
+        console.error(err);
+        setStatus("Failed to load URL", "err");
+      });
+  }
+
+  function loadFromFile() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const el = document.createElement("img");
+        el.onload = () => {
+          originalImage = new Image(el);
+          currentImage = originalImage.clone();
+          showOriginal = false;
+          refresh();
+          setStatus("Loaded: " + file.name);
+        };
+        el.onerror = () => setStatus("Failed to decode image", "err");
+        el.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  }
+
+  function savePNG() {
+    const shown = showOriginal ? originalImage : currentImage;
+    if (!shown) { setStatus("Nothing to save", "err"); return; }
+    const c = document.createElement("canvas");
+    shown.draw(c);
+    const link = document.createElement("a");
+    link.download = "carolab-result.png";
+    link.href = c.toDataURL("image/png");
+    link.click();
+    setStatus("Saved PNG");
+  }
+
+  function resetToOriginal() {
+    if (!originalImage) { setStatus("No image loaded", "err"); return; }
+    currentImage = originalImage.clone();
+    showOriginal = false;
+    refresh();
+    setStatus("Reset to original");
+  }
+
+  // ------------------------------------------------------------------
+  //  Point operations
+  // ------------------------------------------------------------------
+  const pointOps = {
+    invert:        (img) => img.invert(img),
+    rgb2gray:      (img) => img.rgb2gray(img),
+    rgb2bw:        (img) => img.rgb2bw(img, +document.getElementById("thr").value || 128),
+    gray2bw:       (img) => img.gray2bw(img, +document.getElementById("thr").value || 128),
+    brightness:    (img) => img.brightness(img, +document.getElementById("brightness").value || 0),
+    adjustIntensity: (img) => img.adjustIntensity(img, +document.getElementById("brightness").value || 0),
+    adjustContrast:  (img) => img.adjustContrast(img, +document.getElementById("contrast").value || 1),
+    histEqualization: (img) => {
+      // Ensure grayscale before equalizing
+      const gray = img.rgb2gray(img);
+      return img.histEqualization(gray);
+    }
+  };
+
+  // ------------------------------------------------------------------
+  //  Geometry operations
+  // ------------------------------------------------------------------
+  const geoOps = {
+    rotate90:  (img) => img.rotate(img, 90),
+    rotate180: (img) => img.rotate(img, 180),
+    rotate270: (img) => img.rotate(img, 270),
+    flipH:     (img) => img.flipH(img),
+    flipV:     (img) => img.flipV(img),
+    resize:    (img) => img.resize(img, img.width * 2, img.height * 2),
+    crop:      (img) => img.crop(img,
+                    Math.floor(img.width * 0.25),
+                    Math.floor(img.height * 0.25),
+                    Math.floor(img.width * 0.5),
+                    Math.floor(img.height * 0.5))
+  };
+
+  // ------------------------------------------------------------------
+  //  Filter operations
+  // ------------------------------------------------------------------
+  const filterOps = {
+    "convolve-sharpen": (img) => img.convolve(img, [0,-1,0,-1,5,-1,0,-1,0]),
+    "convolve-blur":    (img) => img.convolve(img, [1,1,1,1,1,1,1,1,1], 9),
+    "convolve-emboss":  (img) => img.convolve(img, [-2,-1,0,-1,1,1,0,1,2], 1, 0),
+    edgeSobel:          (img) => img.edgeSobel(img.rgb2gray(img)),
+    edgeCanny:          (img) => img.edgeCanny(
+                            img.rgb2gray(img),
+                            +document.getElementById("cannyLow").value || 50,
+                            +document.getElementById("cannyHigh").value || 100)
+  };
+
+  // ------------------------------------------------------------------
+  //  Morphology operations
+  // ------------------------------------------------------------------
+  const morphOps = {
+    dilate:      (img) => img.dilate(img.rgb2gray(img)),
+    erode:       (img) => img.erode(img.rgb2gray(img)),
+    open:        (img) => img.open(img.rgb2gray(img)),
+    close:       (img) => img.close(img.rgb2gray(img)),
+    dilateMask:  (img) => img.dilateMask(img.rgb2bw(img, 128), 3),
+    erodeMask:   (img) => img.erodeMask(img.rgb2bw(img, 128), 3),
+    morphOpen:   (img) => img.morphOpen(img.rgb2bw(img, 128), 3),
+    morphClose:  (img) => img.morphClose(img.rgb2bw(img, 128), 3)
+  };
+
+  // ------------------------------------------------------------------
+  //  Color operations
+  // ------------------------------------------------------------------
+  const colorOps = {
+    rgb2hsv:         (img) => img.rgb2hsv(img),
+    colorReduction:  (img) => img.colorReduction(img, 6),
+    "filter-red":    (img) => img.colorFilter(img.rgb2hsv(img), "red"),
+    "filter-orange": (img) => img.colorFilter(img.rgb2hsv(img), "orange"),
+    "filter-yellow": (img) => img.colorFilter(img.rgb2hsv(img), "yellow"),
+    "filter-green":  (img) => img.colorFilter(img.rgb2hsv(img), "green"),
+    "filter-cyan":   (img) => img.colorFilter(img.rgb2hsv(img), "cyan"),
+    "filter-blue":   (img) => img.colorFilter(img.rgb2hsv(img), "blue"),
+    "filter-purple": (img) => img.colorFilter(img.rgb2hsv(img), "purple")
+  };
+
+  // ------------------------------------------------------------------
+  //  Analysis: Hough Lines / Circles (modal output)
+  // ------------------------------------------------------------------
+  function showModal(title, text) {
+    document.getElementById("modal-title").textContent = title;
+    document.getElementById("modal-body").textContent = text;
+    document.getElementById("modal").classList.add("show");
+  }
+
+  function houghLines(img) {
+    // Binarize first
+    const bw = img.rgb2bw(img, +document.getElementById("thr").value || 128);
+    const lines = bw.houghLines(bw, {
+      thetaStep: 1,
+      rhoStep:   1,
+      numPeaks:  8,
+      threshold: 30
+    });
+    let out = `Found ${lines.length} line(s)\n\n`;
+    lines.forEach((l, i) => {
+      const deg = (l.theta * 180 / Math.PI).toFixed(1);
+      out += `#${i + 1}  rho=${l.rho.toFixed(2)}  theta=${deg}°  votes=${l.votes}\n`;
+      out += `     p1=(${l.point1.x.toFixed(1)}, ${l.point1.y.toFixed(1)})  `;
+      out += `p2=(${l.point2.x.toFixed(1)}, ${l.point2.y.toFixed(1)})\n`;
+    });
+    if (!lines.length) out += "(none — try lowering the threshold)";
+    showModal("Hough Lines", out);
+  }
+
+  function houghCircles(img) {
+    const bw = img.rgb2bw(img, +document.getElementById("thr").value || 128);
+    const circles = bw.houghCircles(bw, {
+      minR: 5, maxR: Math.floor(Math.min(img.width, img.height) / 2),
+      rStep: 1, numPeaks: 8, threshold: 20
+    });
+    let out = `Found ${circles.length} circle(s)\n\n`;
+    circles.forEach((c, i) => {
+      out += `#${i + 1}  center=(${c.x}, ${c.y})  r=${c.r}  votes=${c.votes}\n`;
+    });
+    if (!circles.length) out += "(none — try lowering the threshold)";
+    showModal("Hough Circles", out);
+  }
+
+  function findContours(img) {
+    const bw = img.rgb2bw(img, +document.getElementById("thr").value || 128);
+    const contours = bw.findContours(bw);
+    let out = `Found ${contours.length} contour(s)\n\n`;
+    contours.slice(0, 12).forEach((c, i) => {
+      out += `#${i + 1}  ${c.length} point(s)  `;
+      out += `start=(${c[0].x}, ${c[0].y})\n`;
+    });
+    if (contours.length > 12) out += `… and ${contours.length - 12} more\n`;
+
+    // Also draw the contours onto the result canvas as an overlay
+    try {
+      const overlay = document.createElement("canvas");
+      overlay.width = img.width;
+      overlay.height = img.height;
+      const ctx = overlay.getContext("2d");
+      // Draw the original as background
+      const tmp = document.createElement("canvas");
+      img.draw(tmp);
+      ctx.drawImage(tmp, 0, 0);
+      // Overlay contours
+      ctx.strokeStyle = "#22d3ee";
+      ctx.lineWidth = 1;
+      contours.forEach(c => {
+        if (!c.length) return;
+        ctx.beginPath();
+        ctx.moveTo(c[0].x + 0.5, c[0].y + 0.5);
+        for (let i = 1; i < c.length; i++) {
+          ctx.lineTo(c[i].x + 0.5, c[i].y + 0.5);
+        }
+        ctx.stroke();
+      });
+      // Show overlay as result
+      currentImage = new Image(overlay);
+      refresh();
+      setStatus("Contours overlaid on result");
+    } catch (e) {
+      console.warn("Contour overlay failed:", e);
+    }
+
+    showModal("Contours", out);
+  }
+
+  // ------------------------------------------------------------------
+  //  Menu wiring
+  // ------------------------------------------------------------------
+  const menus = document.querySelectorAll(".menu");
+  menus.forEach(menu => {
+    menu.addEventListener("click", (e) => {
+      // If an item inside the dropdown was clicked, don't toggle
+      if (e.target.closest(".item")) return;
+      const isOpen = menu.classList.contains("open");
+      menus.forEach(m => m.classList.remove("open"));
+      if (!isOpen) menu.classList.add("open");
+      e.stopPropagation();
+    });
+  });
+
+  // Close menus when clicking outside
+  document.addEventListener("click", () => {
+    menus.forEach(m => m.classList.remove("open"));
+  });
+
+  // Menu command dispatch
+  const commands = {
+    // File
+    "load-sample": loadSample,
+    "load-url":    loadFromURL,
+    "load-file":   loadFromFile,
+    "save-png":    savePNG,
+    "reset":       resetToOriginal,
+
+    // Point
+    invert:          () => apply("Invert", pointOps.invert),
+    rgb2gray:        () => apply("RGB→Gray", pointOps.rgb2gray),
+    rgb2bw:          () => apply("RGB→BW", pointOps.rgb2bw),
+    gray2bw:         () => apply("Gray→BW", pointOps.gray2bw),
+    brightness:      () => apply("Brightness", pointOps.brightness),
+    adjustIntensity: () => apply("Intensity", pointOps.adjustIntensity),
+    adjustContrast:  () => apply("Contrast", pointOps.adjustContrast),
+    histEqualization:() => apply("Histogram Equalization", pointOps.histEqualization),
+
+    // Geometry
+    rotate90:  () => apply("Rotate 90", geoOps.rotate90),
+    rotate180: () => apply("Rotate 180", geoOps.rotate180),
+    rotate270: () => apply("Rotate 270", geoOps.rotate270),
+    flipH:     () => apply("Flip H", geoOps.flipH),
+    flipV:     () => apply("Flip V", geoOps.flipV),
+    resize:    () => apply("Resize ×2", geoOps.resize),
+    crop:      () => apply("Crop", geoOps.crop),
+
+    // Filters
+    "convolve-sharpen": () => apply("Sharpen", filterOps["convolve-sharpen"]),
+    "convolve-blur":    () => apply("Box Blur", filterOps["convolve-blur"]),
+    "convolve-emboss":  () => apply("Emboss", filterOps["convolve-emboss"]),
+    edgeSobel:          () => apply("Sobel", filterOps.edgeSobel),
+    edgeCanny:          () => apply("Canny", filterOps.edgeCanny),
+
+    // Morphology
+    dilate:     () => apply("Dilate", morphOps.dilate),
+    erode:      () => apply("Erode", morphOps.erode),
+    open:       () => apply("Open", morphOps.open),
+    close:      () => apply("Close", morphOps.close),
+    dilateMask: () => apply("Dilate Mask", morphOps.dilateMask),
+    erodeMask:  () => apply("Erode Mask", morphOps.erodeMask),
+    morphOpen:  () => apply("Morph Open", morphOps.morphOpen),
+    morphClose: () => apply("Morph Close", morphOps.morphClose),
+
+    // Color
+    rgb2hsv:         () => apply("RGB→HSV", colorOps.rgb2hsv),
+    colorReduction:  () => apply("Color Reduction", colorOps.colorReduction),
+    "filter-red":    () => apply("Filter Red", colorOps["filter-red"]),
+    "filter-orange": () => apply("Filter Orange", colorOps["filter-orange"]),
+    "filter-yellow": () => apply("Filter Yellow", colorOps["filter-yellow"]),
+    "filter-green":  () => apply("Filter Green", colorOps["filter-green"]),
+    "filter-cyan":   () => apply("Filter Cyan", colorOps["filter-cyan"]),
+    "filter-blue":   () => apply("Filter Blue", colorOps["filter-blue"]),
+    "filter-purple": () => apply("Filter Purple", colorOps["filter-purple"]),
+
+    // Analysis
+    houghLines:    () => { if (currentImage) houghLines(currentImage); },
+    houghCircles:  () => { if (currentImage) houghCircles(currentImage); },
+    findContours:  () => { if (currentImage) findContours(currentImage); },
+
+    // View
+    "toggle-original": () => {
+      if (!originalImage) return;
+      showOriginal = !showOriginal;
+      refresh();
+      setStatus(showOriginal ? "Showing original" : "Showing result");
+    },
+    "fit": () => {
+      // Reset canvas zoom (browser handles it; simply re-draw)
+      refresh();
+    }
+  };
+
+  // Attach handlers to every dropdown item
+  document.querySelectorAll(".dropdown .item").forEach(item => {
+    item.addEventListener("click", (e) => {
+      const cmd = item.getAttribute("data-cmd");
+      menus.forEach(m => m.classList.remove("open"));
+      const fn = commands[cmd];
+      if (typeof fn === "function") fn();
+      e.stopPropagation();
+    });
+  });
+
+  // Toolbar buttons
+  document.getElementById("btn-canny").addEventListener("click", () => {
+    apply("Canny", filterOps.edgeCanny);
+  });
+  document.getElementById("btn-reset").addEventListener("click", resetToOriginal);
+
+  // Modal close
+  document.getElementById("modal-close").addEventListener("click", () => {
+    document.getElementById("modal").classList.remove("show");
+  });
+  document.getElementById("modal").addEventListener("click", (e) => {
+    if (e.target.id === "modal") {
+      document.getElementById("modal").classList.remove("show");
+    }
+  });
+
+  // ------------------------------------------------------------------
+  //  Bootstrap
+  // ------------------------------------------------------------------
+  loadSample();
+})();
+</script>
+</body>
+</html>

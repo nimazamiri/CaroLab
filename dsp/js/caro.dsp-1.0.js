@@ -508,6 +508,8 @@ class Signal {
             peak: this.length ? Math.max(...this.data.map(Math.abs)) : null
         };
     }
+		
 }
 
-module.exports = Signal;
+if(typeof module!=='undefined' && module.exports) module.exports=Signal;
+if(typeof window!=='undefined') window.Signal=Signal;

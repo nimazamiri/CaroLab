@@ -1058,4 +1058,5 @@ class Image {
     }
 }
 
-module.exports = Image;
+if(typeof module!=='undefined' && module.exports) module.exports=Image;
+if(typeof window!=='undefined') window.Image=Image;

@@ -1,0 +1,6 @@
+--- use plotly.js as a local or http source library in example files.
+--- run http-server in CaroLab folder.
+
+http://localhost:8080/control/js/datavis/plotFrequencyResponse.html
+http://localhost:8080/control/js/datavis/plotImpulseResponse.html
+http://localhost:8080/control/js/datavis/plotStepResponse.html

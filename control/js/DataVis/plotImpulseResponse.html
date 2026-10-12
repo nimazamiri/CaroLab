@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Step response</title></head>
+<body>
+  <div id="plot" style="width:100%;height:450px"></div>
+  <!-- script src="../plotly.min.js"></script> -->
+  <script src="http://cdn.plot.ly/plotly-2.27.1.min.js"></script>
+  <script src="../caro.compensator-1.0.js"></script>
+  <script>
+    const c = new Compensator();
+    const G = c.tf([1], [1, 3, 2]);
+
+	let st = c.step(G);
+    let im = c.impulse(G);
+
+    Plotly.newPlot('plot',
+      [{ x: im.t, y: im.y, mode: 'lines', name: 'y(t)' }],
+      { title: 'Impulse response', xaxis: { title: 'Time (s)' }, yaxis: { title: 'Amplitude' } });
+  </script>
+</body>
+</html>

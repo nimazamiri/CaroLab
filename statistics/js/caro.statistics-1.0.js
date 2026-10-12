@@ -690,4 +690,5 @@ class Sample {
 	
 }
 
-module.exports =  Sample;
+if(typeof module!=='undefined' && module.exports) module.exports=Sample;
+if(typeof window!=='undefined') window.Sample=Sample;

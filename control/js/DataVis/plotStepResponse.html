@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Step response</title></head>
+<body>
+  <div id="plot" style="width:100%;height:450px"></div>
+  <!-- script src="../plotly.min.js"></script> -->
+  <script src="http://cdn.plot.ly/plotly-2.27.1.min.js"></script>
+  <script src="../caro.compensator-1.0.js"></script>
+  <script>
+    const c = new Compensator();
+    const Gs = c.tf([10], [1, 1, 0]);      // 10 / (s^2 + s)
+    const st = c.step(c.closeLoop(Gs));    // unity-feedback closed loop
+
+    Plotly.newPlot('plot',
+      [{ x: st.t, y: st.y, mode: 'lines', name: 'y(t)' }],
+      { title: 'Step response', xaxis: { title: 'Time (s)' }, yaxis: { title: 'Amplitude' } });
+  </script>
+</body>
+</html>

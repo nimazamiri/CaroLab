@@ -467,7 +467,8 @@ class ML {
   }
 }
 
-module.exports =  ML;
+if(typeof module!=='undefined' && module.exports) module.exports=ML;
+if(typeof window!=='undefined') window.ML=ML;
 
 
 

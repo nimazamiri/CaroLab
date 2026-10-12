@@ -755,5 +755,6 @@ class Matrix {
     }
 }
 
-module.exports =  Matrix;
+if(typeof module!=='undefined' && module.exports) module.exports=Matrix;
+if(typeof window!=='undefined') window.Matrix=Matrix;
 

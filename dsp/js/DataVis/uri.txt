@@ -1,0 +1,4 @@
+--- use plotly.js as a local or http source library in example files.
+--- run http-server in CaroLab folder.
+
+http://localhost:8080/dsp/js/datavis/dsp_dv1.html

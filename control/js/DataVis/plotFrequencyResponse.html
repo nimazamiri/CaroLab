@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Frequency Response</title></head>
+<body>
+  <div id="bode"   style="height:550px"></div>
+  <div id="rl"     style="height:450px"></div>
+  <div id="nyq"    style="height:450px"></div>
+  <div id="nichols" style="height:450px"></div>
+
+  <!-- script src="../plotly.min.js"></script> -->
+  <!-- Use 'https://' protocol if you don't use a local server -->
+  <script src="http://cdn.plot.ly/plotly-2.27.1.min.js"></script>
+  <script src="../caro.compensator-1.0.js"></script>
+  <script>
+    const c = new Compensator();
+    const L = c.tf([2], [1, 3, 2, 0]);            // open-loop L(s)
+    const b   = c.bodePlot(L);
+    const rl  = c.rootLocusPlot(L);
+    const nyq = c.nyquistPlot(L);
+    const nic = c.nicholsPlot(L);
+
+    // ---- Bode (magnitude + phase, shared log-frequency axis) ----
+    Plotly.newPlot('bode', [
+      { x: b.w, y: b.magnitudeDb, name: 'Magnitude (dB)', xaxis: 'x', yaxis: 'y' },
+      { x: b.w, y: b.phase,       name: 'Phase (deg)',    xaxis: 'x', yaxis: 'y2' }
+    ], {
+      title: 'Bode plot',
+      xaxis:  { type: 'log', title: 'Frequency (rad/s)', anchor: 'y2' },
+      yaxis:  { title: 'Magnitude (dB)', domain: [0.55, 1] },
+      yaxis2: { title: 'Phase (deg)',    domain: [0, 0.45] }
+    });
+
+    // ---- Root locus (one line per branch + poles x / zeros o) ----
+    const branches = rl.branches.map(br => ({ x: br.re, y: br.im, mode: 'lines', showlegend: false }));
+    Plotly.newPlot('rl', [
+      ...branches,
+      { x: rl.poles.map(p => p.re), y: rl.poles.map(p => p.im), mode: 'markers', marker: { symbol: 'x', size: 10 }, name: 'Poles' },
+      { x: rl.zeros.map(z => z.re), y: rl.zeros.map(z => z.im), mode: 'markers', marker: { symbol: 'circle-open', size: 10 }, name: 'Zeros' }
+    ], {
+      title: 'Root locus',
+      xaxis: { title: 'Real axis' },
+      yaxis: { title: 'Imaginary axis', scaleanchor: 'x' }
+    });
+
+    // ---- Nyquist (w > 0, mirror for w < 0, critical point -1) ----
+    Plotly.newPlot('nyq', [
+      { x: nyq.real,    y: nyq.imag,    mode: 'lines', name: 'w > 0' },
+      { x: nyq.realNeg, y: nyq.imagNeg, mode: 'lines', name: 'w < 0', line: { dash: 'dot' } },
+      { x: [-1], y: [0], mode: 'markers', marker: { symbol: 'cross', color: 'red', size: 10 }, name: '-1' }
+    ], {
+      title: 'Nyquist plot',
+      xaxis: { title: 'Real' },
+      yaxis: { title: 'Imaginary', scaleanchor: 'x' }
+    });
+
+    // ---- Nichols (open-loop phase vs. gain) ----
+    Plotly.newPlot('nichols', [
+      { x: nic.phase, y: nic.magnitudeDb, mode: 'lines', name: 'L(jw)' },
+      { x: [-180], y: [0], mode: 'markers', marker: { symbol: 'cross', color: 'red', size: 10 }, name: 'Critical point' }
+    ], {
+      title: 'Nichols chart',
+      xaxis: { title: 'Open-loop phase (deg)' },
+      yaxis: { title: 'Open-loop gain (dB)' }
+    });
+  </script>
+</body>
+</html>
